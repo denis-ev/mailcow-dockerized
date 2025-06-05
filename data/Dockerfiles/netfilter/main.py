@@ -54,9 +54,7 @@ def refreshF2boptions():
     f2boptions['netban_ipv6'] = r.get('F2B_NETBAN_IPV6')
   else:
     try:
-      logdebug("Loading F2B_OPTIONS JSON from redis")
       f2boptions = json.loads(r.get('F2B_OPTIONS'))
-      logdebug("Loaded F2B_OPTIONS: %s" % (f2boptions))
     except ValueError as e:
       logger.logCrit(
         'Error loading F2B options: F2B_OPTIONS is not json. Exception: %s' % e)
@@ -314,14 +312,23 @@ def autopurge():
       for net in QUEUE_UNBAN:
         logdebug("Autopurge: unbanning queued net: %s" % net)
         unban(str(net))
-    for net in bans.copy():
-      logdebug("Checking ban expiry for: %s" % net)
-      if bans[net]['attempts'] >= MAX_ATTEMPTS:
-        NET_BAN_TIME = calcNetBanTime(bans[net]['ban_counter'])
-        TIME_SINCE_LAST_ATTEMPT = time.time() - bans[net]['last_attempt']
-        if TIME_SINCE_LAST_ATTEMPT > NET_BAN_TIME:
-          logdebug("Ban expired for %s" % net)
-          unban(net)
+    # Only check expiry for actively banned IPs:
+    active_bans = r.hgetall('F2B_ACTIVE_BANS')
+    now = time.time()
+    for net_str, expire_str in active_bans.items():
+      logdebug("Checking ban expiry for (actively banned): %s" % net_str)
+      # Defensive: always process if timer missing or expired
+      try:
+        expire = float(expire_str)
+      except Exception:
+        logdebug("Invalid expire time for %s; unbanning" % net_str)
+        unban(net_str)
+        continue
+      time_left = expire - now
+      logdebug("Time left for %s: %.1f seconds" % (net_str, time_left))
+      if time_left <= 0:
+        logdebug("Ban expired for %s" % net_str)
+        unban(net_str)
 
 def mailcowChainOrder():
   global lock
