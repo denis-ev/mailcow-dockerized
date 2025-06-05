@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-DEBUG = True  # Set to False to disable debug output
+DEBUG = False
 
 import re
 import os
