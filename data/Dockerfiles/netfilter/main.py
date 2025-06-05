@@ -531,7 +531,6 @@ if __name__ == '__main__':
 
   while not quit_now:
     time.sleep(0.5)
-    logdebug("Main thread tick")
 
   logdebug("Exiting with code %s" % exit_code)
   sys.exit(exit_code)
